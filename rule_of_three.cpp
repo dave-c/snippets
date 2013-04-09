@@ -21,12 +21,12 @@ public:
     std::cout << "copy assignment operator" << std::endl;
     if (this != &other)
       {
-        int* ptr_cp = new int;
-        *(ptr_cp) = *(other._data) + 1;
+        int* data_cp = new int;
+        *(data_cp) = *(other._data) + 1;
 
         delete _data;
 
-        _data = ptr_cp;
+        _data = data_cp;
       }
     return *this;
   }
