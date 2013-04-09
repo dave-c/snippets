@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 
+// This example is completely wrong
+
 class Observer;
 
 class Subject {
