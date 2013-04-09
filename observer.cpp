@@ -22,7 +22,7 @@ public:
 protected:
   template <class _Subject_>
   _Subject_ const &getSubject(_Subject_ const &subject) {
-    return *dynamic_cast<_Subject_*>(&const_cast<_Subject_ &>(subject));
+    return *dynamic_cast<_Subject_*>(&const_cast<_Subject_&>(subject));
   }
 };
 
@@ -52,7 +52,7 @@ public:
   void update() {
     _charCount = getSubject<TextEditor>(_textEditor).getText().size();
   }
-  int getCharacterCount() {
+  int getCharacterCount() const {
     return _charCount;
   }
 private:
