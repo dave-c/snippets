@@ -1,3 +1,10 @@
+/+ example usage:
+ + rdmd new_design.d --sensitivity NACA_DesignPointSensitivity.csv --position NACA_DesignPointPosition.csv
+ +
+ + tested on:
+ + http://downloads.dlang.org/releases/2013/dmd.2.063.2.zip
+ +/
+
 import std.stdio;
 import std.string;
 import std.path;
@@ -6,43 +13,46 @@ import std.getopt;
 import std.conv;
 import std.csv;
 import std.regex;
+import std.algorithm;
 
 
 void main(string[] args)
 {
-  char separator = ',';
-  string positionFile = "position.csv";
-  string sensitivityFile = "sensitivity.csv";
+  auto separator = ',';
+  auto positionFile = "position.csv";
+  auto sensitivityFile = "sensitivity.csv";
+
+  assert(std.algorithm.find("hello, world", "World").length == 0);
 
   getopt(args,
          "separator", &separator,
          "position|p", &positionFile,
          "sensitivity|s", &sensitivityFile);
 
-  CsvTable position = parseCsvTable(positionFile, separator);
-  CsvTable sensitivity = parseCsvTable(sensitivityFile, separator);
+  auto position = parseCsvTable(positionFile, separator);
+  auto sensitivity = parseCsvTable(sensitivityFile, separator);
 
 
   // update new position using the unconstrained steepest descent method
   {
-    std.stdio.write("stepSize: ");
-    double stepSize;
-    std.stdio.readf(" %s", &stepSize);
+    auto stepSize = getStepSize();
 
-    for (uint i = 0; i != position.contents.length; ++i)
+    for (auto i = 0; i != position.contents.length; ++i)
       {
-        bool hasWeight = (position.contents[i].length == 7);
+        auto hasWeight = (position.contents[i].length == 7);
 
-        for (uint j = 0; j != 3; ++j)
+        for (auto j = 0; j != 3; ++j)
           {
-            double delta = -stepSize * sensitivity.contents[i][j];
+            auto delta = -stepSize * sensitivity.contents[i][j];
 
             if (hasWeight)
               {
-                delta *= position.contents[i][6];
+                auto weight = position.contents[i][6];
+                delta *= weight;
               }
 
-            position.contents[i][j + 3] += delta;
+            auto newPosition = position.contents[i][j + 3];
+            position.contents[i][j + 3] = newPosition + delta;
           }
       }
   }
@@ -122,6 +132,28 @@ void writeCsvTable(CsvTable table, string filename, char separator)
     }
 
   std.file.write(filename, data);
+}
+
+
+auto getStepSize(double stepSize = 1.0e-5)
+{
+  std.stdio.writef("Step size (default = %s): ", stepSize);
+
+  {
+    string input = chomp(readln());
+    if (input.length != 0)
+      {
+        try {
+          stepSize = std.conv.parse!double(input);
+        }
+        catch (std.conv.ConvException e) {
+          write("[" ~ e.msg ~"] ");
+        }
+      }
+  }
+
+  std.stdio.writefln("Step size = %s", stepSize);
+  return stepSize;
 }
 
 
