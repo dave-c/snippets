@@ -1,75 +1,79 @@
-#include <iostream>
+// based on:
+// http://rtmatheson.com/2010/03/working-on-the-subject-observer-pattern/
+
 #include <vector>
+#include <string>
+#include <iostream>
 
-// This example is completely wrong
 
-class Observer;
+class Subject;
 
-class Subject {
+
+class Observer
+{
 public:
-  void attach(Observer *observer) {
-    _observer.push_back(observer);
-  }
-  void notify() const;
-private:
-  std::vector<Observer*> _observer;
+  virtual void notify(Subject* s) = 0;
+  virtual ~Observer() {};
 };
 
-class Observer {
+
+class Subject
+{
 public:
-  Observer(Subject &subject) {
-    subject.attach(this);
+  virtual ~Subject() {};
+  void register_observer(Observer* o)
+  {
+    observers.push_back(o);
   }
-  virtual void update() = 0;
+
 protected:
-  template <class _Subject_>
-  _Subject_ const &getSubject(_Subject_ const &subject) {
-    return *dynamic_cast<_Subject_*>(&const_cast<_Subject_&>(subject));
+  void notify_observers()
+  {
+    std::vector<Observer*>::const_iterator iter;
+    for (iter = observers.begin(); iter != observers.end(); ++iter)
+      (*iter)->notify(this);
   }
-};
 
-void Subject::notify() const {
-  for (int i = 0; i < _observer.size(); i++)
-    _observer[i]->update();
-}
-
-
-class TextEditor: public Subject {
-public:
-  void addText(std::string text) {
-    _text += text;
-    this->notify();
-  }
-  std::string const &getText() const {
-    return _text;
-  }
 private:
-  std::string _text;
+  std::vector<Observer*> observers;
 };
 
-class WordCount: public Observer {
+
+class Alarm: public Subject
+{
 public:
-  WordCount(TextEditor &textEditor)
-    : Observer(textEditor), _textEditor(textEditor), _charCount(0) {}
-  void update() {
-    _charCount = getSubject<TextEditor>(_textEditor).getText().size();
+  void trigger()
+  {
+    std::cout << "The alarm has been triggerd"
+              << std::endl;
+    notify_observers();
   }
-  int getCharacterCount() const {
-    return _charCount;
+
+  int const get_loudness()
+  {
+    return 100;
   }
-private:
-  TextEditor const &_textEditor;
-  int _charCount;
 };
 
 
-int main() {
-  TextEditor textEditor;
-  WordCount wordCount(textEditor);
+class Horn: public Observer
+{
+public:
+  virtual void notify(Subject* s)
+  {
+    if (Alarm *a = dynamic_cast<Alarm*>(s))
+      std::cout << "Sound the horn at "
+                << a->get_loudness() << "dB"
+                << std::endl;
+  }
+};
 
-  textEditor.addText(std::string("hello"));
-  std::cout << wordCount.getCharacterCount() << " " << textEditor.getText() << std::endl;
 
-  textEditor.addText(std::string(" world"));
-  std::cout << wordCount.getCharacterCount() << " " << textEditor.getText() << std::endl;
+int main()
+{
+  Alarm a = Alarm();
+  Horn h = Horn();
+  a.register_observer(&h);
+  a.trigger();
+  return 0;
 }
