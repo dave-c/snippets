@@ -1,22 +1,31 @@
-#include <string>
 #include <iostream>
 
 
-class Container
+class Status
 {
 public:
-  // typedef short T;
-  typedef std::string T;
+  enum Mode { Off = 1, On = 2, };
 
-  Container(T const &var) : _var(var) {}
-  T get() const { return _var; }
-  T const &_var;
+  Status(Mode const &refMode)
+    : _refMode(refMode)
+  {}
+
+  Mode getRefMode() const { return _refMode; }
+
+  // BUG: remove reference
+  Mode const &_refMode;
+};
+
+
+class BitRep: public Status
+{
+public:
+  BitRep() : Status(Status::On) {}
 };
 
 
 int main()
 {
-  // Container ctr(Container::T(10));
-  Container ctr(Container::T("10"));
-  std::cout << ctr.get() << std::endl;
+  std::cout << BitRep()._refMode << std::endl;
+  std::cout << BitRep().getRefMode() << std::endl;
 }
