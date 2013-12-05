@@ -3,6 +3,8 @@ import std.getopt;
 import std.file;
 import std.regex;
 import std.conv;
+import std.uni;
+import std.ascii;
 
 /+
  `scan` returns the next character
@@ -12,13 +14,19 @@ import std.conv;
  `generate` writes the abstract syntax tree to x86-64 assembler for yasm
  +/
 
-enum Mode { scan, tokenise, parse, interpret, generate, };
+enum Mode { scan, tokenise, parse, interpret, generate, }
 Mode mode = Mode.scan;
 
 
 void main(string[] args)
 {
   getopt(args, "mode", &mode);
+
+  if (args.length < 2)
+    {
+      writeln("no files provided");
+      return;
+    }
 
   string[] inputs;
   foreach (ref arg; args[1..$])
@@ -50,6 +58,7 @@ struct Scanner
 
   void evaluate()
   {
+    writeln("Running the scanner...");
     char e;
     while (getNext(e))
       {
@@ -70,10 +79,90 @@ struct Scanner
     return success;
   }
 
+  bool peekNext(out char e)
+  {
+    bool success = false;
+    if (offset < this.text.length)
+      {
+        success = true;
+        e = this.text[offset];
+      }
+
+    return success;
+  }
+
+  void increment()
+  {
+    ++offset;
+  }
+
+  void clear()
+  {
+    offset = 0;
+    line = 0;
+    col = 0;
+  }
+
   string text;
   int offset = 0;
   int line = 0;
   int col = 0;
+}
+
+
+string graphicalChar(char e)
+{
+  switch (e)
+    {
+    case ' ': return "space";
+    case '\n': return "newline";
+    case '\t': return "tab";
+    default: return to!string(e);
+    }
+}
+
+
+struct SpecialToken
+{
+  string[] keyword = ["import", "return"];
+  string[] primative = ["void", "int"];
+  char[] whitespace = ['\n'];
+  string[] symbol = ["=", "!", "(", ")"];
+}
+
+
+struct Token
+{
+  enum Type { unrecognised, keyword, primative, whitespace, symbol, identifier, }
+  Type type = Type.unrecognised;
+  string name = "";
+  int offset = 0;
+  int length = 0;
+}
+
+struct IdentifierToken
+{
+  bool hasFirstChar(char e)
+  {
+    return std.ascii.isAlpha(e);
+  }
+
+  bool hasNextChar(char e)
+  {
+    return std.ascii.isAlphaNum(e);
+  }
+}
+
+struct NumberToken
+{
+}
+
+struct StringToken
+{
+}
+
+struct WhitespaceToken
+{
 }
 
 
@@ -82,36 +171,56 @@ struct Lexer
   this(ref Scanner scanner)
   {
     this.scanner = scanner;
-    this.scanner.getNext(this.e);
+    this.scanner.clear();
   }
 
   void evaluate()
   {
-    string token;
+    writeln("Running the lexer...");
+    Token token;
     while (getNext(token))
       {
-        writeln(token);
+        writeln(to!string(token.type), ": ", token.name);
       }
   }
 
-  bool getNext(out string token)
+  bool getNext(out Token token)
   {
     bool success = false;
+
     char e;
-    token = "";
+    token.offset = this.scanner.offset;
+    token.length = 1;
+
     while (this.scanner.getNext(e))
       {
         success = true;
-        if (match(to!string(e), regex(r"[_a-zA-Z]")).captures.length > 0)
+
+        if (IdentifierToken().hasFirstChar(e))
           {
-            token ~= e;
-            this.scanner.getNext(e);
-            while (match(to!string(e), regex(r"[_a-zA-Z0-9]")).captures.length > 0)
+            char ep;
+            while (this.scanner.peekNext(ep) && IdentifierToken().hasNextChar(ep))
               {
-                token ~= e;
-                this.scanner.getNext(e);
+                this.scanner.increment();
+                ++token.length;
               }
-            return
+            token.type = Token.Type.identifier;
+            token.name = this.scanner.text[token.offset..token.offset + token.length];
+            break;
+          }
+
+        else
+          {
+            token.type = Token.Type.unrecognised;
+            if (std.ascii.isGraphical(e))
+              {
+                token.name =  "'" ~ to!string(e) ~ "'";
+              }
+            else
+              {
+                token.name = graphicalChar(e);
+              }
+            break;
           }
       }
 
@@ -119,6 +228,4 @@ struct Lexer
   }
 
   Scanner scanner;
-  char e;
-  enum Token { unrecognised, indetifier, };
 }
