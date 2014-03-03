@@ -1,51 +1,75 @@
-// Pimpl idiom, based on:
-// http://stackoverflow.com/questions/60570/why-should-the-pimpl-idiom-be-used
+// Extend a class to implement its tangent and
+// adjoint derivatives using the Pimpl idiom,
+// interfaces and the RAII idiom.
 
 #include <memory>
-class Function
-{
-private:
-  class Derivative;
 
+
+class DerivativeBase
+{
+public:
+  virtual ~DerivativeBase() {}
+  virtual void evaluateTangent() const = 0;
+  virtual void evaluateAdjoint() const = 0;
+};
+
+
+class Differentiable
+{
+public:
+  virtual ~Differentiable() {}
+  virtual DerivativeBase const & derivative() const = 0;
+};
+
+
+class Function : public Differentiable
+{
 public:
   Function();
-  Derivative const & derivative() const;
+  void evaluate() const;
+  DerivativeBase const & derivative() const;
 
 private:
-  std::auto_ptr<Derivative> _drv;
+  class Derivative;
+  std::auto_ptr<Derivative> _derivative;
 };
 
 
-class Function::Derivative
+class Function::Derivative : public DerivativeBase
 {
 public:
-  void tangent() const;
-  void adjoint() const;
+  void evaluateTangent() const;
+  void evaluateAdjoint() const;
 };
+
 
 Function::Function()
 {
-  _drv = std::auto_ptr<Derivative>(new Derivative);
+  _derivative = std::auto_ptr<Derivative>(new Derivative);
 }
 
-Function::Derivative const & Function::derivative() const
+DerivativeBase const & Function::derivative() const
 {
-  return *_drv;
+  return *_derivative;
 }
 
-void Function::Derivative::tangent() const
-{
-  // evaluate tangent derivative
-}
+void Function::evaluate() const
+{}
 
-void Function::Derivative::adjoint() const
-{
-  // evaluate adjoint derivative
-}
+void Function::Derivative::evaluateTangent() const
+{}
+
+void Function::Derivative::evaluateAdjoint() const
+{}
 
 
 int main()
 {
-  Function().derivative().tangent();
-  Function().derivative().adjoint();
+  Function * function = new Function();
+
+  if (dynamic_cast<Differentiable *>(function))
+    {
+      function->derivative().evaluateTangent();
+      function->derivative().evaluateAdjoint();
+    }
 }
