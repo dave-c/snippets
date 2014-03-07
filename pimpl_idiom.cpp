@@ -5,12 +5,19 @@
 #include <memory>
 
 
+class Mode
+{
+public:
+  enum Option { Primal, Tangent, Adjoint, };
+};
+
+
 class DerivativeBase
 {
 public:
   virtual ~DerivativeBase() {}
-  virtual void evaluateTangent() const = 0;
-  virtual void evaluateAdjoint() const = 0;
+  virtual void initialize(Mode::Option modeOption) const = 0;
+  virtual void evaluate(Mode::Option modeOption) const = 0;
 };
 
 
@@ -28,7 +35,6 @@ public:
   Function();
   void evaluate() const;
   DerivativeBase const & derivative() const;
-
 private:
   class Derivative;
   std::auto_ptr<Derivative> _derivative;
@@ -38,14 +44,17 @@ private:
 class Function::Derivative : public DerivativeBase
 {
 public:
-  void evaluateTangent() const;
-  void evaluateAdjoint() const;
+  Derivative(Function &outer): _outer(outer) {}
+  void initialize(Mode::Option modeOption) const;
+  void evaluate(Mode::Option modeOption) const;
+private:
+  Function &_outer;
 };
 
 
 Function::Function()
 {
-  _derivative = std::auto_ptr<Derivative>(new Derivative);
+  _derivative = std::auto_ptr<Derivative>(new Derivative(*this));
 }
 
 DerivativeBase const & Function::derivative() const
@@ -54,13 +63,28 @@ DerivativeBase const & Function::derivative() const
 }
 
 void Function::evaluate() const
-{}
+{
+}
 
-void Function::Derivative::evaluateTangent() const
-{}
+void Function::Derivative::initialize(Mode::Option modeOption) const
+{
+  if (modeOption == Mode::Adjoint) {
+    // FunctionDerivative<AdjointMode>().initialize();
+  }
+}
 
-void Function::Derivative::evaluateAdjoint() const
-{}
+void Function::Derivative::evaluate(Mode::Option modeOption) const
+{
+  if (modeOption == Mode::Primal) {
+    _outer.evaluate();
+  }
+  else if (modeOption == Mode::Tangent) {
+    // FunctionDerivative<TangentMode>().evaluate();
+  }
+  else if (modeOption == Mode::Adjoint) {
+    // FunctionDerivative<AdjointMode>().evaluate();
+  }
+}
 
 
 int main()
@@ -69,7 +93,7 @@ int main()
 
   if (dynamic_cast<Differentiable *>(function))
     {
-      function->derivative().evaluateTangent();
-      function->derivative().evaluateAdjoint();
+      function->derivative().initialize(Mode::Adjoint);
+      function->derivative().evaluate(Mode::Adjoint);
     }
 }
